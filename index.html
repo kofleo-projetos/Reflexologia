@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#c97b8a" />
+  <meta name="description" content="Sistema de Atendimento - Adeline Milani" />
+  <title>Adeline Milani – Sistema</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --rose:      #c97b8a;
+      --rose-dark: #a85f6e;
+      --rose-soft: #f5dde2;
+      --cream:     #fdf6f0;
+      --mocha:     #5c3d3d;
+      --sand:      #e8d5c4;
+      --sage:      #7a9e8e;
+      --text:      #3a2828;
+      --text-muted:#7a6060;
+      --card-bg:   #fffaf7;
+      --border:    #eadcd4;
+      --shadow:    0 4px 24px rgba(92,61,61,.08);
+      --shadow-lg: 0 12px 48px rgba(92,61,61,.14);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #5c3d3d 0%, #8b5567 60%, #c97b8a 100%);
+      color: #fff;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      height: 90px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 20px rgba(92,61,61,.3);
+    }
+    header .logo {
+      width: 68px; height: 68px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid rgba(255,255,255,.5);
+      flex-shrink: 0;
+      box-shadow: 0 2px 12px rgba(0,0,0,.25);
+    }
+    header .title-block h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.45rem;
+      font-weight: 600;
+      letter-spacing: .02em;
+      line-height: 1.1;
+    }
+    header .title-block span {
+      font-size: .75rem;
+      opacity: .7;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    /* ── NAV TABS ── */
+    nav {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      overflow-x: auto;
+      scrollbar-width: none;
+      position: sticky;
+      top: 90px;
+      z-index: 99;
+    }
+    nav::-webkit-scrollbar { display: none; }
+    nav button {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      padding: 0 18px;
+      height: 50px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    nav button.active {
+      color: var(--rose-dark);
+      border-bottom-color: var(--rose);
+    }
+    nav button:hover { color: var(--rose); }
+    nav button .icon { font-size: 1rem; }
+
+    /* ── MAIN ── */
+    main {
+      flex: 1;
+      padding: 24px 20px 100px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* ── SECTIONS ── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── CARDS GRID ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 18px;
+      box-shadow: var(--shadow);
+    }
+    .card .card-label {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .card .card-value {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--mocha);
+      line-height: 1;
+    }
+    .card .card-sub {
+      font-size: .72rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .card.accent { background: linear-gradient(135deg, var(--rose-soft), #fff); border-color: var(--rose); }
+    .card.green  { background: linear-gradient(135deg, #d8ede7, #fff); border-color: var(--sage); }
+    .card.mocha  { background: linear-gradient(135deg, #e8ddd0, #fff); border-color: var(--sand); }
+
+    /* ── NEXT APPOINTMENT CARD ── */
+    .next-appt-card {
+      background: linear-gradient(135deg, #5c3d3d, #8b5567);
+      color: #fff;
+      border-radius: 20px;
+      padding: 22px 24px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+    .next-appt-card::before {
+      content: '';
+      position: absolute;
+      right: -30px; top: -30px;
+      width: 130px; height: 130px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.06);
+    }
+    .next-appt-card .tag {
+      font-size: .65rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      opacity: .7;
+      margin-bottom: 6px;
+    }
+    .next-appt-card h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem;
+      margin-bottom: 4px;
+    }
+    .next-appt-card .detail {
+      font-size: .8rem;
+      opacity: .85;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: .7rem;
+      font-weight: 500;
+    }
+    .badge.rose { background: var(--rose-soft); color: var(--rose-dark); }
+    .badge.sage { background: #d8ede7; color: #3a7060; }
+    .badge.white { background: rgba(255,255,255,.2); color: #fff; }
+
+    /* ── SECTION TITLE ── */
+    .section-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: var(--mocha);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── FORM ── */
+    .form-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .form-row.single { grid-template-columns: 1fr; }
+    .form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+    @media(max-width:560px){ .form-row,.form-row.triple{ grid-template-columns:1fr; } }
+
+    label {
+      display: block;
+      font-size: .72rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .9rem;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--rose);
+      box-shadow: 0 0 0 3px rgba(201,123,138,.15);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 24px;
+      border-radius: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .85rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all .2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--rose-dark), var(--rose));
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(201,123,138,.35);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(201,123,138,.45); }
+    .btn-outline {
+      background: #fff;
+      color: var(--rose-dark);
+      border: 1px solid var(--rose);
+    }
+    .btn-danger { background: #fde8e8; color: #c0392b; border: 1px solid #f5c6cb; }
+
+    /* ── TABLE ── */
+    .table-wrap {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: linear-gradient(90deg, var(--rose-soft), #fff); }
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    td {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      font-size: .85rem;
+    }
+    tr:hover td { background: var(--rose-soft); }
+    .action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: .85rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background .2s;
+    }
+    .action-btn:hover { background: var(--rose-soft); }
+
+    /* ── CHART ── */
+    .chart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+    .chart-card h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+      color: var(--mocha);
+    }
+
+    /* ── AGENDA ── */
+    .agenda-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: var(--shadow);
+      transition: transform .2s;
+    }
+    .agenda-item:hover { transform: translateX(4px); }
+    .agenda-date-block {
+      background: linear-gradient(135deg, var(--rose-dark), var(--rose));
+      color: #fff;
+      border-radius: 10px;
+      width: 50px; height: 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .agenda-date-block .day { font-size: 1.3rem; font-weight: 700; line-height: 1; }
+    .agenda-date-block .mon { font-size: .6rem; text-transform: uppercase; opacity: .85; }
+    .agenda-info { flex: 1; }
+    .agenda-info .client-name { font-weight: 500; font-size: .95rem; }
+    .agenda-info .detail { font-size: .78rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--mocha);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-size: .85rem;
+      z-index: 999;
+      transition: transform .3s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-muted);
+    }
+    .empty .icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty p { font-size: .9rem; }
+
+    /* ── CONFIG SECTION ── */
+    .config-group {
+      margin-bottom: 28px;
+    }
+    .config-group h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem;
+      color: var(--mocha);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── BOTTOM NAV MOBILE ── */
+    @media(max-width:640px){
+      nav { display: none; }
+      .bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        background: #fff;
+        border-top: 1px solid var(--border);
+        z-index: 100;
+      }
+      .bottom-nav button {
+        flex: 1;
+        background: none;
+        border: none;
+        padding: 8px 4px 10px;
+        font-size: .6rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        transition: color .2s;
+      }
+      .bottom-nav button .icon { font-size: 1.3rem; }
+      .bottom-nav button.active { color: var(--rose); }
+      main { padding-bottom: 80px; }
+    }
+    @media(min-width:641px){
+      .bottom-nav { display: none; }
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--cream); }
+    ::-webkit-scrollbar-thumb { background: var(--sand); border-radius: 4px; }
+
+    /* ── LOADING ── */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      color: var(--text-muted);
+      font-size: .9rem;
+      gap: 10px;
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--sand);
+      border-top-color: var(--rose);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Photo fallback */
+    .logo-fallback {
+      width: 68px; height: 68px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f5dde2, #c97b8a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      flex-shrink: 0;
+      border: 3px solid rgba(255,255,255,.5);
+      box-shadow: 0 2px 12px rgba(0,0,0,.25);
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <!--
+    📸 FOTO DE PERFIL:
+    1. Salve sua foto com o nome "foto-adeline.jpg" na mesma pasta do index.html
+    2. Pronto! A foto aparecerá automaticamente aqui.
+    (O Instagram bloqueia carregamento direto por segurança)
+  -->
+  <img class="logo" id="headerPhoto"
+    src="foto-adeline.jpg"
+    onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';"
+    alt="Adeline" />
+  <div class="logo-fallback" id="logoFallback" style="display:none">🌸</div>
+  <div class="title-block">
+    <h1>Sistema personalizado para Adeline</h1>
+    <span>Gestão de Atendimento · Beleza & Bem-estar</span>
+  </div>
+</header>
+
+<!-- DESKTOP NAV -->
+<nav id="desktopNav">
+  <button class="active" onclick="showSection('dashboard')" data-sec="dashboard"><span class="icon">📊</span> Dashboard</button>
+  <button onclick="showSection('agenda')" data-sec="agenda"><span class="icon">📅</span> Agenda</button>
+  <button onclick="showSection('atendimento')" data-sec="atendimento"><span class="icon">✍️</span> Atendimento</button>
+  <button onclick="showSection('clientes')" data-sec="clientes"><span class="icon">👤</span> Clientes</button>
+  <button onclick="showSection('reflexologia')" data-sec="reflexologia"><span class="icon">🦶</span> Reflexologia</button>
+  <button onclick="showSection('manicure')" data-sec="manicure"><span class="icon">💅</span> Manicure</button>
+  <button onclick="showSection('config')" data-sec="config"><span class="icon">⚙️</span> Config.</button>
+</nav>
+
+<main>
+
+  <!-- ═══════════════════════════════════════════════ DASHBOARD -->
+  <section id="dashboard" class="section active">
+    <div class="section-title">📊 Dashboard</div>
+
+    <div id="nextApptArea"></div>
+
+    <div class="cards-grid" id="dashCards">
+      <div class="card accent">
+        <div class="card-label">💰 Total Faturado (mês)</div>
+        <div class="card-value" id="dFaturado">R$ 0</div>
+        <div class="card-sub">mês atual</div>
+      </div>
+      <div class="card mocha">
+        <div class="card-label">💸 Total Gastos</div>
+        <div class="card-value" id="dGastos">R$ 0</div>
+        <div class="card-sub">km + insumos</div>
+      </div>
+      <div class="card green">
+        <div class="card-label">✨ Lucro</div>
+        <div class="card-value" id="dLucro">R$ 0</div>
+        <div class="card-sub">mês atual</div>
+      </div>
+      <div class="card">
+        <div class="card-label">👥 Clientes Atendidos</div>
+        <div class="card-value" id="dClientes">0</div>
+        <div class="card-sub">mês atual</div>
+      </div>
+      <div class="card accent">
+        <div class="card-label">🏆 Serviço Mais Faturado</div>
+        <div class="card-value" id="dServico" style="font-size:1.2rem">—</div>
+        <div class="card-sub" id="dServicoVal"></div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3>📈 Lucro por Mês</h3>
+      <canvas id="chartLucro" height="220"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <h3>🍩 Serviços por Tipo</h3>
+      <canvas id="chartServicos" height="220"></canvas>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════ AGENDA -->
+  <section id="agenda" class="section">
+    <div class="section-title">📅 Agenda</div>
+
+    <div class="form-card">
+      <div class="form-row">
+        <div>
+          <label>Cliente</label>
+          <select id="agCliente"></select>
+        </div>
+        <div>
+          <label>Serviço</label>
+          <select id="agServico">
+            <option value="Manicure">💅 Manicure</option>
+            <option value="Reflexologia">🦶 Reflexologia</option>
+            <option value="Manicure + Reflexologia">💅🦶 Manicure + Reflexologia</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row triple">
+        <div>
+          <label>Data</label>
+          <input type="date" id="agData" />
+        </div>
+        <div>
+          <label>Horário</label>
+          <input type="time" id="agHora" />
+        </div>
+        <div>
+          <label>Km deslocamento</label>
+          <input type="number" id="agKm" placeholder="0" min="0" />
+        </div>
+      </div>
+      <div class="form-row single">
+        <div>
+          <label>Observações</label>
+          <textarea id="agObs" placeholder="Preferências, endereço, etc."></textarea>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="salvarAgenda()">📅 Agendar</button>
+    </div>
+
+    <div id="agendaList"></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════ ATENDIMENTO -->
+  <section id="atendimento" class="section">
+    <div class="section-title">✍️ Registrar Atendimento</div>
+
+    <div class="form-card">
+      <div class="form-row">
+        <div>
+          <label>Cliente *</label>
+          <select id="atCliente"></select>
+        </div>
+        <div>
+          <label>Tipo de Serviço *</label>
+          <select id="atServico">
+            <option value="Manicure">💅 Manicure</option>
+            <option value="Reflexologia">🦶 Reflexologia</option>
+            <option value="Manicure + Reflexologia">💅🦶 Manicure + Reflexologia</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row triple">
+        <div>
+          <label>Data *</label>
+          <input type="date" id="atData" />
+        </div>
+        <div>
+          <label>Km Deslocamento</label>
+          <input type="number" id="atKm" placeholder="0" min="0" step="0.1" />
+        </div>
+        <div>
+          <label>Valor do Serviço (R$) *</label>
+          <input type="number" id="atValor" placeholder="0,00" min="0" step="0.01" />
+        </div>
+      </div>
+      <div class="form-row single">
+        <div>
+          <label>Observações</label>
+          <textarea id="atObs" placeholder="Detalhes do atendimento..."></textarea>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="salvarAtendimento()">💾 Salvar Atendimento</button>
+    </div>
+
+    <div class="section-title" style="margin-top:32px">📋 Histórico</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Serviço</th>
+            <th>Data</th>
+            <th>Km</th>
+            <th>Valor</th>
+            <th>Custo</th>
+            <th>Lucro</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="atendimentoTbody">
+          <tr><td colspan="8"><div class="loading"><div class="spinner"></div> Carregando...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════ CLIENTES -->
+  <section id="clientes" class="section">
+    <div class="section-title">👤 Clientes</div>
+
+    <div class="form-card">
+      <div class="form-row">
+        <div>
+          <label>Nome *</label>
+          <input type="text" id="clNome" placeholder="Nome completo" />
+        </div>
+        <div>
+          <label>Telefone</label>
+          <input type="tel" id="clTel" placeholder="(11) 99999-9999" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Endereço / Bairro</label>
+          <input type="text" id="clEndereco" placeholder="Rua, bairro ou cidade" />
+        </div>
+        <div>
+          <label>Distância Padrão (km)</label>
+          <input type="number" id="clKm" placeholder="0" min="0" step="0.1" />
+        </div>
+      </div>
+      <div class="form-row single">
+        <div>
+          <label>Observações</label>
+          <textarea id="clObs" placeholder="Preferências, alergias, horários..."></textarea>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="salvarCliente()">💾 Cadastrar Cliente</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Km</th><th>Obs.</th><th></th></tr>
+        </thead>
+        <tbody id="clientesTbody">
+          <tr><td colspan="6"><div class="loading"><div class="spinner"></div> Carregando...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════ REFLEXOLOGIA -->
+  <section id="reflexologia" class="section">
+    <div class="section-title">🦶 Reflexologia Podal</div>
+    <div class="cards-grid">
+      <div class="card accent">
+        <div class="card-label">🦶 Sessões no Mês</div>
+        <div class="card-value" id="rSessoes">0</div>
+      </div>
+      <div class="card green">
+        <div class="card-label">💰 Faturado</div>
+        <div class="card-value" id="rFaturado">R$ 0</div>
+      </div>
+      <div class="card mocha">
+        <div class="card-label">⭐ Ticket Médio</div>
+        <div class="card-value" id="rTicket">R$ 0</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Cliente</th><th>Data</th><th>Km</th><th>Valor</th><th>Obs.</th></tr>
+        </thead>
+        <tbody id="reflexTbody">
+          <tr><td colspan="5"><div class="loading"><div class="spinner"></div> Carregando...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════ MANICURE -->
+  <section id="manicure" class="section">
+    <div class="section-title">💅 Manicure</div>
+    <div class="cards-grid">
+      <div class="card accent">
+        <div class="card-label">💅 Sessões no Mês</div>
+        <div class="card-value" id="mSessoes">0</div>
+      </div>
+      <div class="card green">
+        <div class="card-label">💰 Faturado</div>
+        <div class="card-value" id="mFaturado">R$ 0</div>
+      </div>
+      <div class="card mocha">
+        <div class="card-label">⭐ Ticket Médio</div>
+        <div class="card-value" id="mTicket">R$ 0</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Cliente</th><th>Data</th><th>Km</th><th>Valor</th><th>Obs.</th></tr>
+        </thead>
+        <tbody id="manicTbody">
+          <tr><td colspan="5"><div class="loading"><div class="spinner"></div> Carregando...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════ CONFIG -->
+  <section id="config" class="section">
+    <div class="section-title">⚙️ Configurações</div>
+
+    <div class="form-card">
+      <div class="config-group">
+        <h3>🚗 Custos de Deslocamento</h3>
+        <div class="form-row">
+          <div>
+            <label>Custo por Km (R$)</label>
+            <input type="number" id="cfKm" placeholder="0,00" min="0" step="0.01" />
+          </div>
+          <div>
+            <label>Custo Fixo por Visita (R$)</label>
+            <input type="number" id="cfVisita" placeholder="0,00" min="0" step="0.01" />
+          </div>
+        </div>
+      </div>
+
+      <div class="config-group">
+        <h3>🧴 Insumos por Atendimento</h3>
+        <div class="form-row triple">
+          <div>
+            <label>Cremes / Óleos (R$)</label>
+            <input type="number" id="cfCremes" placeholder="0,00" min="0" step="0.01" />
+          </div>
+          <div>
+            <label>Esmaltes / Materiais (R$)</label>
+            <input type="number" id="cfEsmaltes" placeholder="0,00" min="0" step="0.01" />
+          </div>
+          <div>
+            <label>Outros insumos (R$)</label>
+            <input type="number" id="cfOutros" placeholder="0,00" min="0" step="0.01" />
+          </div>
+        </div>
+      </div>
+
+      <div class="config-group">
+        <h3>💅 Valores Padrão de Serviço</h3>
+        <div class="form-row">
+          <div>
+            <label>Valor Padrão – Manicure (R$)</label>
+            <input type="number" id="cfValManicure" placeholder="0,00" min="0" step="0.01" />
+          </div>
+          <div>
+            <label>Valor Padrão – Reflexologia (R$)</label>
+            <input type="number" id="cfValReflex" placeholder="0,00" min="0" step="0.01" />
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="salvarConfig()">💾 Salvar Configurações</button>
+    </div>
+
+    <div class="form-card" style="background:linear-gradient(135deg,#fdf6f0,#fff)">
+      <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:var(--mocha);margin-bottom:12px">📊 Resumo de Custos Estimados</h3>
+      <p id="cfResumo" style="font-size:.88rem;color:var(--text-muted);line-height:1.8">
+        Configure os valores acima para ver o custo estimado por atendimento.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<!-- MOBILE BOTTOM NAV -->
+<div class="bottom-nav" id="bottomNav">
+  <button class="active" onclick="showSection('dashboard')" data-sec="dashboard"><span class="icon">📊</span>Dashboard</button>
+  <button onclick="showSection('agenda')" data-sec="agenda"><span class="icon">📅</span>Agenda</button>
+  <button onclick="showSection('atendimento')" data-sec="atendimento"><span class="icon">✍️</span>Atendimento</button>
+  <button onclick="showSection('clientes')" data-sec="clientes"><span class="icon">👤</span>Clientes</button>
+  <button onclick="showSection('config')" data-sec="config"><span class="icon">⚙️</span>Config.</button>
+</div>
+
+<div id="toast">✅ Salvo com sucesso!</div>
+
+<!-- ──────────────── SCRIPTS ──────────────── -->
+<script>
+// ═══════════════════════════ FIREBASE CONFIG ═══════════════════════════
+// ⚠️  SUBSTITUA pelas suas credenciais do Firebase!
+const firebaseConfig = {
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "SEU_SENDER_ID",
+  appId: "SEU_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Collections
+const COL_CLIENTES    = 'clientes';
+const COL_ATENDIMENTO = 'atendimentos';
+const COL_AGENDA      = 'agenda';
+const COL_CONFIG      = 'configuracoes';
+
+// ═══════════════════════════ NAVIGATION ═══════════════════════════
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('[data-sec]').forEach(b => {
+    b.classList.toggle('active', b.dataset.sec === id);
+  });
+  if (id === 'dashboard') updateDashboard();
+  if (id === 'agenda')    { loadAgendaList(); populateClienteSelects(); }
+  if (id === 'atendimento') { loadAtendimentos(); populateClienteSelects(); }
+  if (id === 'clientes')  loadClientes();
+  if (id === 'reflexologia') loadServicoPorTipo('Reflexologia');
+  if (id === 'manicure')  loadServicoPorTipo('Manicure');
+  if (id === 'config')    loadConfig();
+}
+
+// ═══════════════════════════ TOAST ═══════════════════════════
+function toast(msg, duration = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ═══════════════════════════ CONFIG ═══════════════════════════
+async function loadConfig() {
+  try {
+    const doc = await db.collection(COL_CONFIG).doc('main').get();
+    if (doc.exists) {
+      const d = doc.data();
+      document.getElementById('cfKm').value        = d.custoKm      || '';
+      document.getElementById('cfVisita').value    = d.custoVisita  || '';
+      document.getElementById('cfCremes').value    = d.custoCremes  || '';
+      document.getElementById('cfEsmaltes').value  = d.custoEsmaltes|| '';
+      document.getElementById('cfOutros').value    = d.custoOutros  || '';
+      document.getElementById('cfValManicure').value = d.valorManicure || '';
+      document.getElementById('cfValReflex').value   = d.valorReflex   || '';
+      atualizaResumoConfig(d);
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function salvarConfig() {
+  const data = {
+    custoKm:      parseFloat(document.getElementById('cfKm').value)       || 0,
+    custoVisita:  parseFloat(document.getElementById('cfVisita').value)    || 0,
+    custoCremes:  parseFloat(document.getElementById('cfCremes').value)    || 0,
+    custoEsmaltes:parseFloat(document.getElementById('cfEsmaltes').value)  || 0,
+    custoOutros:  parseFloat(document.getElementById('cfOutros').value)    || 0,
+    valorManicure:parseFloat(document.getElementById('cfValManicure').value)|| 0,
+    valorReflex:  parseFloat(document.getElementById('cfValReflex').value)  || 0,
+  };
+  await db.collection(COL_CONFIG).doc('main').set(data);
+  atualizaResumoConfig(data);
+  toast('⚙️ Configurações salvas!');
+}
+
+function atualizaResumoConfig(d) {
+  const totalInsumos = (d.custoCremes||0) + (d.custoEsmaltes||0) + (d.custoOutros||0);
+  document.getElementById('cfResumo').innerHTML =
+    `<strong>Insumos por atendimento:</strong> R$ ${totalInsumos.toFixed(2)}<br>
+     <strong>Custo por km rodado:</strong> R$ ${(d.custoKm||0).toFixed(2)}/km<br>
+     <strong>Custo fixo por visita:</strong> R$ ${(d.custoVisita||0).toFixed(2)}<br>
+     <em>Ex.: atendimento com 10 km → custo total ≈ R$ ${((d.custoKm||0)*10 + (d.custoVisita||0) + totalInsumos).toFixed(2)}</em>`;
+}
+
+async function getConfig() {
+  try {
+    const doc = await db.collection(COL_CONFIG).doc('main').get();
+    return doc.exists ? doc.data() : {};
+  } catch(e) { return {}; }
+}
+
+// ═══════════════════════════ CLIENTES ═══════════════════════════
+let allClientes = [];
+
+async function loadClientes() {
+  const tbody = document.getElementById('clientesTbody');
+  tbody.innerHTML = `<tr><td colspan="6"><div class="loading"><div class="spinner"></div> Carregando...</div></td></tr>`;
+  try {
+    const snap = await db.collection(COL_CLIENTES).orderBy('nome').get();
+    allClientes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderClientes();
+    populateClienteSelects();
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="icon">⚠️</div><p>Erro ao carregar. Verifique o Firebase.</p></div></td></tr>`;
+  }
+}
+
+function renderClientes() {
+  const tbody = document.getElementById('clientesTbody');
+  if (!allClientes.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="icon">👤</div><p>Nenhum cliente cadastrado.</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = allClientes.map(c => `
+    <tr>
+      <td><strong>${c.nome}</strong></td>
+      <td>${c.telefone || '—'}</td>
+      <td>${c.endereco || '—'}</td>
+      <td>${c.distanciaKm ? c.distanciaKm + ' km' : '—'}</td>
+      <td style="font-size:.8rem;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.obs || '—'}</td>
+      <td><button class="action-btn" onclick="excluirCliente('${c.id}')">🗑️</button></td>
+    </tr>
+  `).join('');
+}
+
+async function salvarCliente() {
+  const nome = document.getElementById('clNome').value.trim();
+  if (!nome) { toast('⚠️ Nome é obrigatório!'); return; }
+  const data = {
+    nome,
+    telefone:    document.getElementById('clTel').value.trim(),
+    endereco:    document.getElementById('clEndereco').value.trim(),
+    distanciaKm: parseFloat(document.getElementById('clKm').value) || 0,
+    obs:         document.getElementById('clObs').value.trim(),
+    criadoEm:    new Date().toISOString(),
+  };
+  await db.collection(COL_CLIENTES).add(data);
+  ['clNome','clTel','clEndereco','clKm','clObs'].forEach(id => document.getElementById(id).value = '');
+  toast('👤 Cliente cadastrado!');
+  loadClientes();
+}
+
+async function excluirCliente(id) {
+  if (!confirm('Excluir este cliente?')) return;
+  await db.collection(COL_CLIENTES).doc(id).delete();
+  toast('🗑️ Cliente removido.');
+  loadClientes();
+}
+
+function populateClienteSelects() {
+  ['atCliente', 'agCliente'].forEach(selId => {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— Selecione —</option>' +
+      allClientes.map(c => `<option value="${c.id}" data-km="${c.distanciaKm||0}">${c.nome}</option>`).join('');
+  });
+  // Auto-fill km on select
+  const atSel = document.getElementById('atCliente');
+  if (atSel) atSel.onchange = () => {
+    const opt = atSel.options[atSel.selectedIndex];
+    document.getElementById('atKm').value = opt.dataset.km || '';
+  };
+  const agSel = document.getElementById('agCliente');
+  if (agSel) agSel.onchange = () => {
+    const opt = agSel.options[agSel.selectedIndex];
+    document.getElementById('agKm').value = opt.dataset.km || '';
+  };
+}
+
+// ═══════════════════════════ ATENDIMENTOS ═══════════════════════════
+async function salvarAtendimento() {
+  const clienteId = document.getElementById('atCliente').value;
+  const clienteNome = document.getElementById('atCliente').options[document.getElementById('atCliente').selectedIndex]?.text;
+  const servico = document.getElementById('atServico').value;
+  const data    = document.getElementById('atData').value;
+  const valor   = parseFloat(document.getElementById('atValor').value) || 0;
+  const km      = parseFloat(document.getElementById('atKm').value)    || 0;
+
+  if (!clienteId || !data || !valor) { toast('⚠️ Preencha cliente, data e valor!'); return; }
+
+  const cfg = await getConfig();
+  const custo = km * (cfg.custoKm||0) + (cfg.custoVisita||0) + (cfg.custoCremes||0) + (cfg.custoEsmaltes||0) + (cfg.custoOutros||0);
+
+  await db.collection(COL_ATENDIMENTO).add({
+    clienteId, clienteNome, servico, data, valor, km,
+    custo: parseFloat(custo.toFixed(2)),
+    lucro: parseFloat((valor - custo).toFixed(2)),
+    obs: document.getElementById('atObs').value.trim(),
+    criadoEm: new Date().toISOString(),
+  });
+  ['atData','atKm','atValor','atObs'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('atCliente').value = '';
+  toast('✅ Atendimento salvo!');
+  loadAtendimentos();
+}
+
+async function loadAtendimentos() {
+  const tbody = document.getElementById('atendimentoTbody');
+  tbody.innerHTML = `<tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>`;
+  try {
+    const snap = await db.collection(COL_ATENDIMENTO).orderBy('data','desc').limit(80).get();
+    if (snap.empty) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="icon">✍️</div><p>Nenhum atendimento registrado.</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = snap.docs.map(d => {
+      const a = d.data();
+      const lucro = a.lucro ?? (a.valor - (a.custo||0));
+      return `<tr>
+        <td><strong>${a.clienteNome||'—'}</strong></td>
+        <td><span class="badge ${a.servico?.includes('Reflex') ? 'sage' : 'rose'}">${a.servico||'—'}</span></td>
+        <td>${formatDate(a.data)}</td>
+        <td>${a.km||0} km</td>
+        <td style="color:var(--sage)"><strong>R$ ${(a.valor||0).toFixed(2)}</strong></td>
+        <td style="color:#c0392b">R$ ${(a.custo||0).toFixed(2)}</td>
+        <td style="color:${lucro>=0?'var(--sage)':'#c0392b'}"><strong>R$ ${lucro.toFixed(2)}</strong></td>
+        <td><button class="action-btn" onclick="excluirAtendimento('${d.id}')">🗑️</button></td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function excluirAtendimento(id) {
+  if (!confirm('Excluir este atendimento?')) return;
+  await db.collection(COL_ATENDIMENTO).doc(id).delete();
+  toast('🗑️ Atendimento removido.');
+  loadAtendimentos();
+}
+
+// ═══════════════════════════ AGENDA ═══════════════════════════
+async function salvarAgenda() {
+  const clienteId = document.getElementById('agCliente').value;
+  const clienteNome = document.getElementById('agCliente').options[document.getElementById('agCliente').selectedIndex]?.text;
+  const servico = document.getElementById('agServico').value;
+  const data    = document.getElementById('agData').value;
+  const hora    = document.getElementById('agHora').value;
+  const km      = parseFloat(document.getElementById('agKm').value) || 0;
+
+  if (!clienteId || !data) { toast('⚠️ Selecione cliente e data!'); return; }
+
+  await db.collection(COL_AGENDA).add({
+    clienteId, clienteNome, servico, data, hora, km,
+    obs: document.getElementById('agObs').value.trim(),
+    status: 'agendado',
+    criadoEm: new Date().toISOString(),
+  });
+  ['agData','agHora','agKm','agObs'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('agCliente').value = '';
+  toast('📅 Agendamento salvo!');
+  loadAgendaList();
+}
+
+async function loadAgendaList() {
+  const list = document.getElementById('agendaList');
+  list.innerHTML = `<div class="loading"><div class="spinner"></div> Carregando...</div>`;
+  const today = new Date().toISOString().slice(0,10);
+  try {
+    const snap = await db.collection(COL_AGENDA).where('data','>=',today).orderBy('data').orderBy('hora').limit(50).get();
+    if (snap.empty) {
+      list.innerHTML = `<div class="empty"><div class="icon">📅</div><p>Nenhum agendamento futuro.</p></div>`;
+      return;
+    }
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    list.innerHTML = docs.map(a => {
+      const [y,m,d2] = (a.data||'').split('-');
+      const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      return `
+        <div class="agenda-item">
+          <div class="agenda-date-block">
+            <div class="day">${d2||'?'}</div>
+            <div class="mon">${months[parseInt(m)-1]||''}</div>
+          </div>
+          <div class="agenda-info">
+            <div class="client-name">${a.clienteNome||'—'}</div>
+            <div class="detail">
+              <span class="badge ${a.servico?.includes('Reflex')?'sage':'rose'}">${a.servico||'—'}</span>
+              ${a.hora ? '🕐 ' + a.hora : ''}
+              ${a.km ? ' · ' + a.km + ' km' : ''}
+              ${a.obs ? ' · ' + a.obs : ''}
+            </div>
+          </div>
+          <button class="action-btn" onclick="excluirAgenda('${a.id}')" style="flex-shrink:0">🗑️</button>
+        </div>`;
+    }).join('');
+  } catch(e) { console.error(e); list.innerHTML = '<div class="empty"><p>Erro ao carregar agenda.</p></div>'; }
+}
+
+async function excluirAgenda(id) {
+  if (!confirm('Excluir este agendamento?')) return;
+  await db.collection(COL_AGENDA).doc(id).delete();
+  toast('🗑️ Agendamento removido.');
+  loadAgendaList();
+}
+
+// ═══════════════════════════ SERVIÇO POR TIPO ═══════════════════════════
+async function loadServicoPorTipo(tipo) {
+  const now = new Date();
+  const mesAtual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  try {
+    const snap = await db.collection(COL_ATENDIMENTO).orderBy('data','desc').limit(200).get();
+    const todos = snap.docs.map(d => d.data());
+    const filtrado = todos.filter(a => a.servico?.includes(tipo) && (a.data||'').startsWith(mesAtual));
+    const total = filtrado.reduce((s,a) => s + (a.valor||0), 0);
+    const ticket = filtrado.length ? total/filtrado.length : 0;
+
+    if (tipo === 'Reflexologia') {
+      document.getElementById('rSessoes').textContent = filtrado.length;
+      document.getElementById('rFaturado').textContent = `R$ ${total.toFixed(2)}`;
+      document.getElementById('rTicket').textContent = `R$ ${ticket.toFixed(2)}`;
+      const tbody = document.getElementById('reflexTbody');
+      tbody.innerHTML = filtrado.length ? filtrado.map(a =>
+        `<tr><td>${a.clienteNome||'—'}</td><td>${formatDate(a.data)}</td><td>${a.km||0} km</td><td>R$ ${(a.valor||0).toFixed(2)}</td><td style="font-size:.8rem">${a.obs||'—'}</td></tr>`
+      ).join('') : `<tr><td colspan="5"><div class="empty"><div class="icon">🦶</div><p>Nenhuma sessão este mês.</p></div></td></tr>`;
+    } else {
+      document.getElementById('mSessoes').textContent = filtrado.length;
+      document.getElementById('mFaturado').textContent = `R$ ${total.toFixed(2)}`;
+      document.getElementById('mTicket').textContent = `R$ ${ticket.toFixed(2)}`;
+      const tbody = document.getElementById('manicTbody');
+      tbody.innerHTML = filtrado.length ? filtrado.map(a =>
+        `<tr><td>${a.clienteNome||'—'}</td><td>${formatDate(a.data)}</td><td>${a.km||0} km</td><td>R$ ${(a.valor||0).toFixed(2)}</td><td style="font-size:.8rem">${a.obs||'—'}</td></tr>`
+      ).join('') : `<tr><td colspan="5"><div class="empty"><div class="icon">💅</div><p>Nenhuma sessão este mês.</p></div></td></tr>`;
+    }
+  } catch(e) { console.error(e); }
+}
+
+// ═══════════════════════════ DASHBOARD ═══════════════════════════
+let chartLucro, chartServicos;
+
+async function updateDashboard() {
+  const now = new Date();
+  const mesAtual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  try {
+    // Load atendimentos
+    const snap = await db.collection(COL_ATENDIMENTO).orderBy('data','desc').limit(500).get();
+    const todos = snap.docs.map(d => d.data());
+
+    // Mes atual
+    const mesSnap = todos.filter(a => (a.data||'').startsWith(mesAtual));
+    const faturado = mesSnap.reduce((s,a) => s + (a.valor||0), 0);
+    const gastos   = mesSnap.reduce((s,a) => s + (a.custo||0), 0);
+    const lucro    = faturado - gastos;
+
+    document.getElementById('dFaturado').textContent = `R$ ${faturado.toFixed(0)}`;
+    document.getElementById('dGastos').textContent   = `R$ ${gastos.toFixed(0)}`;
+    document.getElementById('dLucro').textContent    = `R$ ${lucro.toFixed(0)}`;
+
+    // Unique clients this month
+    const uniq = new Set(mesSnap.map(a => a.clienteId)).size;
+    document.getElementById('dClientes').textContent = uniq || mesSnap.length;
+
+    // Serviço mais faturado
+    const servicoMap = {};
+    todos.forEach(a => {
+      const s = a.servico || 'Outro';
+      servicoMap[s] = (servicoMap[s] || 0) + (a.valor||0);
+    });
+    const topServico = Object.entries(servicoMap).sort((a,b) => b[1]-a[1])[0];
+    if (topServico) {
+      document.getElementById('dServico').textContent = topServico[0];
+      document.getElementById('dServicoVal').textContent = `R$ ${topServico[1].toFixed(0)} total`;
+    }
+
+    // Next appointment
+    await loadNextAppt();
+
+    // Build monthly chart (last 6 months)
+    buildCharts(todos);
+
+  } catch(e) { console.error(e); }
+}
+
+async function loadNextAppt() {
+  const area = document.getElementById('nextApptArea');
+  const today = new Date().toISOString().slice(0,10);
+  try {
+    const snap = await db.collection(COL_AGENDA).where('data','>=',today).orderBy('data').orderBy('hora').limit(1).get();
+    if (snap.empty) { area.innerHTML = ''; return; }
+    const a = snap.docs[0].data();
+    const [y,m,d] = (a.data||'').split('-');
+    const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    area.innerHTML = `
+      <div class="next-appt-card" style="margin-bottom:24px">
+        <div class="tag">📅 Próximo Agendamento</div>
+        <h3>${a.clienteNome||'—'}</h3>
+        <div class="detail">
+          <span class="badge white">📆 ${d} de ${months[parseInt(m)-1]} ${y}</span>
+          ${a.hora ? `<span class="badge white">🕐 ${a.hora}</span>` : ''}
+          <span class="badge white">${a.servico||''}</span>
+          ${a.km ? `<span class="badge white">🚗 ${a.km} km</span>` : ''}
+        </div>
+      </div>`;
+  } catch(e) { area.innerHTML = ''; }
+}
+
+function buildCharts(todos) {
+  const now = new Date();
+  const labels = [];
+  const lucroData = [];
+  const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    labels.push(months[d.getMonth()]);
+    const mes = todos.filter(a => (a.data||'').startsWith(key));
+    const fat = mes.reduce((s,a) => s + (a.valor||0), 0);
+    const gas = mes.reduce((s,a) => s + (a.custo||0), 0);
+    lucroData.push(parseFloat((fat - gas).toFixed(2)));
+  }
+
+  // Lucro chart
+  const ctx1 = document.getElementById('chartLucro');
+  if (chartLucro) chartLucro.destroy();
+  chartLucro = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Lucro (R$)',
+        data: lucroData,
+        backgroundColor: lucroData.map(v => v >= 0 ? 'rgba(122,158,142,.75)' : 'rgba(192,57,43,.55)'),
+        borderRadius: 10,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        datalabels: false,
+        tooltip: { callbacks: { label: ctx => ` R$ ${ctx.raw.toFixed(2)}` } },
+      },
+      scales: {
+        y: { display: false, grid: { display: false }, border: { display: false } },
+        x: { grid: { display: false }, border: { display: false },
+             ticks: { font: { family: 'DM Sans', size: 12 }, color: '#7a6060' } }
+      },
+      animation: {
+        onComplete(anim) {
+          const chart = anim.chart;
+          const ctx = chart.ctx;
+          ctx.save();
+          ctx.font = '600 11px DM Sans';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          chart.data.datasets[0].data.forEach((val, i) => {
+            const meta = chart.getDatasetMeta(0);
+            const bar = meta.data[i];
+            const x = bar.x;
+            const y = bar.y;
+            ctx.fillStyle = val >= 0 ? '#3a7060' : '#c0392b';
+            ctx.fillText('R$' + val.toFixed(0), x, y - 4);
+          });
+          ctx.restore();
+        }
+      }
+    }
+  });
+
+  // Servico donut
+  const servicoMap = {};
+  todos.forEach(a => {
+    const s = a.servico?.includes('Reflex') && a.servico?.includes('Man') ? 'Man + Reflex'
+             : a.servico?.includes('Reflex') ? 'Reflexologia'
+             : a.servico?.includes('Man') ? 'Manicure' : a.servico || 'Outro';
+    servicoMap[s] = (servicoMap[s]||0) + (a.valor||0);
+  });
+  const sLabels = Object.keys(servicoMap);
+  const sData   = Object.values(servicoMap);
+
+  const ctx2 = document.getElementById('chartServicos');
+  if (chartServicos) chartServicos.destroy();
+  chartServicos = new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: sLabels,
+      datasets: [{
+        data: sData,
+        backgroundColor: ['#c97b8a','#7a9e8e','#e8d5c4','#5c3d3d'],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'DM Sans' } } },
+        tooltip: { callbacks: { label: ctx => ` R$ ${ctx.raw.toFixed(2)}` } }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════ UTILS ═══════════════════════════
+function formatDate(d) {
+  if (!d) return '—';
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+
+// ═══════════════════════════ INIT ═══════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  // Set today's date on forms
+  const today = new Date().toISOString().slice(0,10);
+  ['atData','agData'].forEach(id => { const el = document.getElementById(id); if(el) el.value = today; });
+
+  await loadClientes();
+  await updateDashboard();
+});
+</script>
+
+<!-- Service Worker registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(() => console.log('SW registered'));
+}
+</script>
+</body>
+</html>
