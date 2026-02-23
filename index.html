@@ -488,6 +488,34 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── BACKUP BUTTONS ── */
+    .backup-row {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .btn-backup {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .75rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text-muted);
+      transition: all .2s;
+      letter-spacing: .02em;
+    }
+    .btn-backup:hover { border-color: var(--rose); color: var(--rose-dark); background: var(--rose-soft); }
+    .btn-backup.import:hover { border-color: var(--sage); color: #3a7060; background: #d8ede7; }
+
     /* Photo fallback */
     .logo-fallback {
       width: 68px; height: 68px;
@@ -854,7 +882,12 @@
       <p id="cfResumo" style="font-size:.88rem;color:var(--text-muted);line-height:1.8">
         Configure os valores acima para ver o custo estimado por atendimento.
       </p>
+      <div class="backup-row">
+        <button class="btn-backup import" onclick="document.getElementById('importFileInput').click()">⬆️ Importar Backup</button>
+        <button class="btn-backup" onclick="exportarBackup()">⬇️ Exportar Backup</button>
+      </div>
     </div>
+    <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importarBackup(event)" />
   </section>
 
 </main>
@@ -873,14 +906,13 @@
 <!-- ──────────────── SCRIPTS ──────────────── -->
 <script>
 // ═══════════════════════════ FIREBASE CONFIG ═══════════════════════════
-// ⚠️  SUBSTITUA pelas suas credenciais do Firebase!
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyDYhznLbob2PSEa_DoIJ65qpKkJfonIQBA",
+  authDomain: "reflexologia-adeline.firebaseapp.com",
+  projectId: "reflexologia-adeline",
+  storageBucket: "reflexologia-adeline.firebasestorage.app",
+  messagingSenderId: "989498630399",
+  appId: "1:989498630399:web:c874044f1b8e1819d76cca"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -1365,6 +1397,88 @@ function buildCharts(todos) {
       }
     }
   });
+}
+
+// ═══════════════════════════ BACKUP ═══════════════════════════
+async function exportarBackup() {
+  toast('⏳ Gerando backup...');
+  try {
+    const [clientes, atendimentos, agenda, config] = await Promise.all([
+      db.collection(COL_CLIENTES).get(),
+      db.collection(COL_ATENDIMENTO).get(),
+      db.collection(COL_AGENDA).get(),
+      db.collection(COL_CONFIG).get(),
+    ]);
+
+    const backup = {
+      versao: '1.0',
+      exportadoEm: new Date().toISOString(),
+      clientes:     clientes.docs.map(d => ({ _id: d.id, ...d.data() })),
+      atendimentos: atendimentos.docs.map(d => ({ _id: d.id, ...d.data() })),
+      agenda:       agenda.docs.map(d => ({ _id: d.id, ...d.data() })),
+      configuracoes:config.docs.map(d => ({ _id: d.id, ...d.data() })),
+    };
+
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dataStr = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = `backup-adeline-${dataStr}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('✅ Backup exportado com sucesso!');
+  } catch(e) {
+    console.error(e);
+    toast('❌ Erro ao exportar backup.');
+  }
+}
+
+async function importarBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (!confirm(`⚠️ Importar o arquivo "${file.name}"?\n\nOs dados existentes NÃO serão apagados — os registros do backup serão adicionados.`)) {
+    event.target.value = '';
+    return;
+  }
+  toast('⏳ Importando backup...');
+  try {
+    const text = await file.text();
+    const backup = JSON.parse(text);
+
+    if (!backup.versao || !backup.clientes) {
+      toast('❌ Arquivo de backup inválido!');
+      return;
+    }
+
+    const batch = db.batch();
+    let count = 0;
+
+    for (const col of ['clientes','atendimentos','agenda','configuracoes']) {
+      const colName = col === 'configuracoes' ? COL_CONFIG
+                    : col === 'atendimentos'  ? COL_ATENDIMENTO
+                    : col === 'clientes'      ? COL_CLIENTES
+                    : COL_AGENDA;
+      for (const item of (backup[col] || [])) {
+        const { _id, ...data } = item;
+        const ref = _id ? db.collection(colName).doc(_id) : db.collection(colName).doc();
+        batch.set(ref, data, { merge: true });
+        count++;
+        // Firestore batch limit is 500 — flush if needed
+        if (count % 490 === 0) { await batch.commit(); }
+      }
+    }
+    await batch.commit();
+
+    toast(`✅ Backup importado! ${count} registros restaurados.`);
+    event.target.value = '';
+    await loadClientes();
+    await updateDashboard();
+  } catch(e) {
+    console.error(e);
+    toast('❌ Erro ao importar. Verifique o arquivo.');
+    event.target.value = '';
+  }
 }
 
 // ═══════════════════════════ UTILS ═══════════════════════════
