@@ -396,18 +396,24 @@
       position: fixed;
       bottom: 80px;
       left: 50%;
-      transform: translateX(-50%) translateY(100px);
+      transform: translateX(-50%) translateY(200px);
       background: var(--mocha);
       color: #fff;
       padding: 12px 24px;
       border-radius: 30px;
       font-size: .85rem;
-      z-index: 999;
-      transition: transform .3s ease;
+      z-index: 9999;
+      transition: transform .3s ease, opacity .3s ease;
       pointer-events: none;
       white-space: nowrap;
+      opacity: 0;
+      visibility: hidden;
     }
-    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      visibility: visible;
+    }
 
     /* ── EMPTY STATE ── */
     .empty {
@@ -939,7 +945,7 @@
   <button onclick="showSection('config')" data-sec="config"><span class="icon">⚙️</span>Config.</button>
 </div>
 
-<div id="toast">✅ Salvo com sucesso!</div>
+<div id="toast"></div>
 
 <!-- ──────────────── SCRIPTS ──────────────── -->
 <script>
@@ -986,7 +992,9 @@ function toast(msg, duration = 2500) {
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => t.classList.remove('show'), duration);
+  _toastTimer = setTimeout(() => {
+    t.classList.remove('show');
+  }, duration);
 }
 
 // ═══════════════════════════ CONFIG ═══════════════════════════
