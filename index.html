@@ -391,6 +391,62 @@
     .agenda-info .client-name { font-weight: 500; font-size: .95rem; }
     .agenda-info .detail { font-size: .78rem; color: var(--text-muted); margin-top: 2px; }
 
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(92,61,61,.45);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 28px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: var(--shadow-lg);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem;
+      color: var(--mocha);
+      margin-bottom: 20px;
+    }
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .repeat-box {
+      background: var(--rose-soft);
+      border: 1px solid var(--rose);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-top: 16px;
+    }
+    .repeat-box label {
+      font-size: .8rem;
+      color: var(--rose-dark);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    .repeat-box .repeat-fields { margin-top: 10px; }
+
     /* ── TOAST ── */
     #toast {
       position: fixed;
@@ -945,6 +1001,75 @@
   <button onclick="showSection('config')" data-sec="config"><span class="icon">⚙️</span>Config.</button>
 </div>
 
+<!-- MODAL EDITAR AGENDAMENTO -->
+<div class="modal-overlay" id="modalEditAgenda" onclick="if(event.target===this)fecharModalAgenda()">
+  <div class="modal">
+    <h2>✏️ Editar Agendamento</h2>
+    <input type="hidden" id="editAgId" />
+    <div class="form-row">
+      <div>
+        <label>Cliente</label>
+        <select id="editAgCliente"></select>
+      </div>
+      <div>
+        <label>Serviço</label>
+        <select id="editAgServico">
+          <option value="Manicure">💅 Manicure</option>
+          <option value="Pedicure">🦶💅 Pedicure</option>
+          <option value="Reflexologia">🦶 Reflexologia</option>
+          <option value="Manicure + Reflexologia">💅🦶 Manicure + Reflexologia</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row triple">
+      <div>
+        <label>Data</label>
+        <input type="date" id="editAgData" />
+      </div>
+      <div>
+        <label>Horário</label>
+        <input type="time" id="editAgHora" />
+      </div>
+      <div>
+        <label>Km</label>
+        <input type="number" id="editAgKm" placeholder="0" min="0" />
+      </div>
+    </div>
+    <div class="form-row single">
+      <div>
+        <label>Observações</label>
+        <textarea id="editAgObs" placeholder="Preferências, endereço, etc."></textarea>
+      </div>
+    </div>
+
+    <!-- REPETIR -->
+    <div class="repeat-box">
+      <label>
+        <input type="checkbox" id="editAgRepetir" onchange="toggleRepetir()" />
+        🔁 Repetir este agendamento
+      </label>
+      <div class="repeat-fields" id="repeatFields" style="display:none">
+        <div class="form-row">
+          <div>
+            <label>Repetir daqui a (dias)</label>
+            <input type="number" id="editAgDias" placeholder="Ex: 7" min="1" max="365" />
+          </div>
+          <div>
+            <label>Quantidade de repetições</label>
+            <input type="number" id="editAgQtd" placeholder="Ex: 4" min="1" max="52" />
+          </div>
+        </div>
+        <p style="font-size:.75rem;color:var(--text-muted);margin-top:4px">Ex: a cada 7 dias, 4 vezes = cria 4 novos agendamentos semanais</p>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModalAgenda()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEdicaoAgenda()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <!-- ──────────────── SCRIPTS ──────────────── -->
@@ -1243,7 +1368,8 @@ async function loadAgendaList() {
               ${a.obs ? ' · ' + a.obs : ''}
             </div>
           </div>
-          <button class="action-btn" onclick="excluirAgenda('${a.id}')" style="flex-shrink:0">🗑️</button>
+          <button class="action-btn" onclick="abrirEditarAgenda('${a.id}','${a.clienteId}','${(a.clienteNome||'').replace(/'/g,"\\'")}','${a.servico||''}','${a.data||''}','${a.hora||''}','${a.km||0}',\`${(a.obs||'').replace(/`/g,'\\`')}\`)" style="flex-shrink:0" title="Editar">✏️</button>
+          <button class="action-btn" onclick="excluirAgenda('${a.id}')" style="flex-shrink:0" title="Excluir">🗑️</button>
         </div>`;
     }).join('');
   } catch(e) { console.error(e); list.innerHTML = '<div class="empty"><p>Erro ao carregar agenda.</p></div>'; }
@@ -1253,6 +1379,79 @@ async function excluirAgenda(id) {
   if (!confirm('Excluir este agendamento?')) return;
   await db.collection(COL_AGENDA).doc(id).delete();
   toast('🗑️ Agendamento removido.');
+  loadAgendaList();
+}
+
+// ═══════════════════════════ MODAL EDITAR AGENDA ═══════════════════════════
+function abrirEditarAgenda(id, clienteId, clienteNome, servico, data, hora, km, obs) {
+  document.getElementById('editAgId').value      = id;
+  document.getElementById('editAgData').value    = data;
+  document.getElementById('editAgHora').value    = hora;
+  document.getElementById('editAgKm').value      = km;
+  document.getElementById('editAgObs').value     = obs;
+  document.getElementById('editAgRepetir').checked = false;
+  document.getElementById('repeatFields').style.display = 'none';
+  document.getElementById('editAgDias').value    = '';
+  document.getElementById('editAgQtd').value     = '';
+
+  // Preenche select de serviço
+  const selServ = document.getElementById('editAgServico');
+  for (let o of selServ.options) o.selected = o.value === servico;
+
+  // Preenche select de cliente (copia do select principal)
+  const selOrig = document.getElementById('agCliente');
+  const selEdit = document.getElementById('editAgCliente');
+  selEdit.innerHTML = selOrig.innerHTML;
+  for (let o of selEdit.options) o.selected = o.value === clienteId;
+
+  document.getElementById('modalEditAgenda').classList.add('open');
+}
+
+function fecharModalAgenda() {
+  document.getElementById('modalEditAgenda').classList.remove('open');
+}
+
+function toggleRepetir() {
+  const checked = document.getElementById('editAgRepetir').checked;
+  document.getElementById('repeatFields').style.display = checked ? 'block' : 'none';
+}
+
+async function salvarEdicaoAgenda() {
+  const id        = document.getElementById('editAgId').value;
+  const clienteEl = document.getElementById('editAgCliente');
+  const clienteId   = clienteEl.value;
+  const clienteNome = clienteEl.options[clienteEl.selectedIndex]?.text || '';
+  const servico   = document.getElementById('editAgServico').value;
+  const data      = document.getElementById('editAgData').value;
+  const hora      = document.getElementById('editAgHora').value;
+  const km        = parseFloat(document.getElementById('editAgKm').value) || 0;
+  const obs       = document.getElementById('editAgObs').value.trim();
+  const repetir   = document.getElementById('editAgRepetir').checked;
+
+  if (!clienteId || !data) { toast('⚠️ Selecione cliente e data!'); return; }
+
+  // Salva edição do agendamento original
+  await db.collection(COL_AGENDA).doc(id).update({ clienteId, clienteNome, servico, data, hora, km, obs });
+
+  // Cria repetições se solicitado
+  if (repetir) {
+    const dias = parseInt(document.getElementById('editAgDias').value) || 7;
+    const qtd  = parseInt(document.getElementById('editAgQtd').value)  || 1;
+    const batch = db.batch();
+    for (let i = 1; i <= qtd; i++) {
+      const novaData = new Date(data + 'T12:00:00');
+      novaData.setDate(novaData.getDate() + dias * i);
+      const dataStr = novaData.toISOString().slice(0,10);
+      const ref = db.collection(COL_AGENDA).doc();
+      batch.set(ref, { clienteId, clienteNome, servico, data: dataStr, hora, km, obs, status: 'agendado', criadoEm: new Date().toISOString() });
+    }
+    await batch.commit();
+    toast(`✅ Agendamento atualizado + ${qtd} repetição(ões) criada(s)!`);
+  } else {
+    toast('✅ Agendamento atualizado!');
+  }
+
+  fecharModalAgenda();
   loadAgendaList();
 }
 
