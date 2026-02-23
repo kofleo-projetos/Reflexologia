@@ -1001,6 +1001,54 @@
   <button onclick="showSection('config')" data-sec="config"><span class="icon">⚙️</span>Config.</button>
 </div>
 
+<!-- MODAL EDITAR ATENDIMENTO -->
+<div class="modal-overlay" id="modalEditAtendimento" onclick="if(event.target===this)fecharModalAtendimento()">
+  <div class="modal">
+    <h2>✏️ Editar Atendimento</h2>
+    <input type="hidden" id="editAtId" />
+    <div class="form-row">
+      <div>
+        <label>Cliente *</label>
+        <select id="editAtCliente"></select>
+      </div>
+      <div>
+        <label>Tipo de Serviço *</label>
+        <select id="editAtServico">
+          <option value="Manicure">💅 Manicure</option>
+          <option value="Pedicure">🦶💅 Pedicure</option>
+          <option value="Reflexologia">🦶 Reflexologia</option>
+          <option value="Manicure + Reflexologia">💅🦶 Manicure + Reflexologia</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row triple">
+      <div>
+        <label>Data *</label>
+        <input type="date" id="editAtData" />
+      </div>
+      <div>
+        <label>Km Deslocamento</label>
+        <input type="number" id="editAtKm" placeholder="0" min="0" step="0.1" />
+      </div>
+      <div>
+        <label>Valor (R$) *</label>
+        <input type="number" id="editAtValor" placeholder="0,00" min="0" step="0.01" />
+      </div>
+    </div>
+    <div class="form-row single">
+      <div>
+        <label>Observações</label>
+        <textarea id="editAtObs" placeholder="Detalhes do atendimento..."></textarea>
+      </div>
+    </div>
+    <p style="font-size:.75rem;color:var(--text-muted);margin-top:-8px">💡 O custo e lucro serão recalculados automaticamente com base nas configurações.</p>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModalAtendimento()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEdicaoAtendimento()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL LEMBRETE WHATSAPP -->
 <div class="modal-overlay" id="modalWhatsapp" onclick="if(event.target===this)fecharModalWhatsapp()">
   <div class="modal">
@@ -1351,7 +1399,7 @@ function populateClienteSelects() {
 
 // ═══════════════════════════ ATENDIMENTOS ═══════════════════════════
 async function salvarAtendimento() {
-  const clienteId = document.getElementById('atCliente').value;
+  const clienteId   = document.getElementById('atCliente').value;
   const clienteNome = document.getElementById('atCliente').options[document.getElementById('atCliente').selectedIndex]?.text;
   const servico = document.getElementById('atServico').value;
   const data    = document.getElementById('atData').value;
@@ -1360,13 +1408,13 @@ async function salvarAtendimento() {
 
   if (!clienteId || !data || !valor) { toast('⚠️ Preencha cliente, data e valor!'); return; }
 
-  const cfg = await getConfig();
-  const custo = km * (cfg.custoKm||0) + (cfg.custoVisita||0) + (cfg.custoCremes||0) + (cfg.custoEsmaltes||0) + (cfg.custoOutros||0);
+  const cfg   = await getConfig();
+  const custo = parseFloat((km * (cfg.custoKm||0) + (cfg.custoVisita||0) + (cfg.custoCremes||0) + (cfg.custoEsmaltes||0) + (cfg.custoOutros||0)).toFixed(2));
+  const lucro = parseFloat((valor - custo).toFixed(2));
 
   await db.collection(COL_ATENDIMENTO).add({
     clienteId, clienteNome, servico, data, valor, km,
-    custo: parseFloat(custo.toFixed(2)),
-    lucro: parseFloat((valor - custo).toFixed(2)),
+    custo, lucro,
     obs: document.getElementById('atObs').value.trim(),
     criadoEm: new Date().toISOString(),
   });
@@ -1374,6 +1422,7 @@ async function salvarAtendimento() {
   document.getElementById('atCliente').value = '';
   toast('✅ Atendimento salvo!');
   loadAtendimentos();
+  updateDashboard(); // atualiza cartões e gráficos imediatamente
 }
 
 async function loadAtendimentos() {
@@ -1396,7 +1445,10 @@ async function loadAtendimentos() {
         <td style="color:var(--sage)"><strong>R$ ${(a.valor||0).toFixed(2)}</strong></td>
         <td style="color:#c0392b">R$ ${(a.custo||0).toFixed(2)}</td>
         <td style="color:${lucro>=0?'var(--sage)':'#c0392b'}"><strong>R$ ${lucro.toFixed(2)}</strong></td>
-        <td><button class="action-btn" onclick="excluirAtendimento('${d.id}')">🗑️</button></td>
+        <td>
+          <button class="action-btn" onclick="abrirEditarAtendimento('${d.id}','${a.clienteId||''}','${(a.clienteNome||'').replace(/'/g,"\\'")}','${a.servico||''}','${a.data||''}','${a.km||0}','${a.valor||0}',\`${(a.obs||'').replace(/`/g,'\\`')}\`)" title="Editar">✏️</button>
+          <button class="action-btn" onclick="excluirAtendimento('${d.id}')" title="Excluir">🗑️</button>
+        </td>
       </tr>`;
     }).join('');
   } catch(e) { console.error(e); }
@@ -1407,6 +1459,54 @@ async function excluirAtendimento(id) {
   await db.collection(COL_ATENDIMENTO).doc(id).delete();
   toast('🗑️ Atendimento removido.');
   loadAtendimentos();
+  updateDashboard();
+}
+
+// ═══════════════════════════ MODAL EDITAR ATENDIMENTO ═══════════════════════════
+function abrirEditarAtendimento(id, clienteId, clienteNome, servico, data, km, valor, obs) {
+  document.getElementById('editAtId').value      = id;
+  document.getElementById('editAtData').value    = data;
+  document.getElementById('editAtKm').value      = km;
+  document.getElementById('editAtValor').value   = valor;
+  document.getElementById('editAtObs').value     = obs;
+
+  const selServ = document.getElementById('editAtServico');
+  for (let o of selServ.options) o.selected = o.value === servico;
+
+  const selOrig = document.getElementById('atCliente');
+  const selEdit = document.getElementById('editAtCliente');
+  selEdit.innerHTML = selOrig.innerHTML;
+  for (let o of selEdit.options) o.selected = o.value === clienteId;
+
+  document.getElementById('modalEditAtendimento').classList.add('open');
+}
+
+function fecharModalAtendimento() {
+  document.getElementById('modalEditAtendimento').classList.remove('open');
+}
+
+async function salvarEdicaoAtendimento() {
+  const id        = document.getElementById('editAtId').value;
+  const clienteEl = document.getElementById('editAtCliente');
+  const clienteId   = clienteEl.value;
+  const clienteNome = clienteEl.options[clienteEl.selectedIndex]?.text || '';
+  const servico   = document.getElementById('editAtServico').value;
+  const data      = document.getElementById('editAtData').value;
+  const km        = parseFloat(document.getElementById('editAtKm').value)    || 0;
+  const valor     = parseFloat(document.getElementById('editAtValor').value) || 0;
+  const obs       = document.getElementById('editAtObs').value.trim();
+
+  if (!clienteId || !data || !valor) { toast('⚠️ Preencha cliente, data e valor!'); return; }
+
+  const cfg   = await getConfig();
+  const custo = parseFloat((km * (cfg.custoKm||0) + (cfg.custoVisita||0) + (cfg.custoCremes||0) + (cfg.custoEsmaltes||0) + (cfg.custoOutros||0)).toFixed(2));
+  const lucro = parseFloat((valor - custo).toFixed(2));
+
+  await db.collection(COL_ATENDIMENTO).doc(id).update({ clienteId, clienteNome, servico, data, km, valor, custo, lucro, obs });
+  toast('✅ Atendimento atualizado!');
+  fecharModalAtendimento();
+  loadAtendimentos();
+  updateDashboard();
 }
 
 // ═══════════════════════════ AGENDA ═══════════════════════════
