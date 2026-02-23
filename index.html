@@ -560,6 +560,7 @@
   <button onclick="showSection('clientes')" data-sec="clientes"><span class="icon">👤</span> Clientes</button>
   <button onclick="showSection('reflexologia')" data-sec="reflexologia"><span class="icon">🦶</span> Reflexologia</button>
   <button onclick="showSection('manicure')" data-sec="manicure"><span class="icon">💅</span> Manicure</button>
+  <button onclick="showSection('pedicure')" data-sec="pedicure"><span class="icon">🦶💅</span> Pedicure</button>
   <button onclick="showSection('config')" data-sec="config"><span class="icon">⚙️</span> Config.</button>
 </nav>
 
@@ -605,7 +606,7 @@
     </div>
 
     <div class="chart-card">
-      <h3>🍩 Serviços por Tipo</h3>
+      <h3>💆 Serviços por Tipo</h3>
       <canvas id="chartServicos" height="220"></canvas>
     </div>
   </section>
@@ -624,6 +625,7 @@
           <label>Serviço</label>
           <select id="agServico">
             <option value="Manicure">💅 Manicure</option>
+            <option value="Pedicure">🦶💅 Pedicure</option>
             <option value="Reflexologia">🦶 Reflexologia</option>
             <option value="Manicure + Reflexologia">💅🦶 Manicure + Reflexologia</option>
           </select>
@@ -669,6 +671,7 @@
           <label>Tipo de Serviço *</label>
           <select id="atServico">
             <option value="Manicure">💅 Manicure</option>
+            <option value="Pedicure">🦶💅 Pedicure</option>
             <option value="Reflexologia">🦶 Reflexologia</option>
             <option value="Manicure + Reflexologia">💅🦶 Manicure + Reflexologia</option>
           </select>
@@ -823,6 +826,35 @@
     </div>
   </section>
 
+  <!-- ═══════════════════════════════════════════════ PEDICURE -->
+  <section id="pedicure" class="section">
+    <div class="section-title">🦶💅 Pedicure</div>
+    <div class="cards-grid">
+      <div class="card accent">
+        <div class="card-label">🦶💅 Sessões no Mês</div>
+        <div class="card-value" id="pSessoes">0</div>
+      </div>
+      <div class="card green">
+        <div class="card-label">💰 Faturado</div>
+        <div class="card-value" id="pFaturado">R$ 0</div>
+      </div>
+      <div class="card mocha">
+        <div class="card-label">⭐ Ticket Médio</div>
+        <div class="card-value" id="pTicket">R$ 0</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Cliente</th><th>Data</th><th>Km</th><th>Valor</th><th>Obs.</th></tr>
+        </thead>
+        <tbody id="pedicTbody">
+          <tr><td colspan="5"><div class="loading"><div class="spinner"></div> Carregando...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <!-- ═══════════════════════════════════════════════ CONFIG -->
   <section id="config" class="section">
     <div class="section-title">⚙️ Configurações</div>
@@ -870,6 +902,12 @@
           <div>
             <label>Valor Padrão – Reflexologia (R$)</label>
             <input type="number" id="cfValReflex" placeholder="0,00" min="0" step="0.01" />
+          </div>
+        </div>
+        <div class="form-row single">
+          <div>
+            <label>Valor Padrão – Pedicure (R$)</label>
+            <input type="number" id="cfValPedicure" placeholder="0,00" min="0" step="0.01" />
           </div>
         </div>
       </div>
@@ -937,6 +975,7 @@ function showSection(id) {
   if (id === 'clientes')  loadClientes();
   if (id === 'reflexologia') loadServicoPorTipo('Reflexologia');
   if (id === 'manicure')  loadServicoPorTipo('Manicure');
+  if (id === 'pedicure')  loadServicoPorTipo('Pedicure');
   if (id === 'config')    loadConfig();
 }
 
@@ -963,6 +1002,7 @@ async function loadConfig() {
       document.getElementById('cfOutros').value    = d.custoOutros  || '';
       document.getElementById('cfValManicure').value = d.valorManicure || '';
       document.getElementById('cfValReflex').value   = d.valorReflex   || '';
+      document.getElementById('cfValPedicure').value = d.valorPedicure || '';
       atualizaResumoConfig(d);
     }
   } catch(e) { console.error(e); }
@@ -977,6 +1017,7 @@ async function salvarConfig() {
     custoOutros:  parseFloat(document.getElementById('cfOutros').value)    || 0,
     valorManicure:parseFloat(document.getElementById('cfValManicure').value)|| 0,
     valorReflex:  parseFloat(document.getElementById('cfValReflex').value)  || 0,
+    valorPedicure:parseFloat(document.getElementById('cfValPedicure').value)|| 0,
   };
   await db.collection(COL_CONFIG).doc('main').set(data);
   atualizaResumoConfig(data);
@@ -1221,6 +1262,14 @@ async function loadServicoPorTipo(tipo) {
       tbody.innerHTML = filtrado.length ? filtrado.map(a =>
         `<tr><td>${a.clienteNome||'—'}</td><td>${formatDate(a.data)}</td><td>${a.km||0} km</td><td>R$ ${(a.valor||0).toFixed(2)}</td><td style="font-size:.8rem">${a.obs||'—'}</td></tr>`
       ).join('') : `<tr><td colspan="5"><div class="empty"><div class="icon">🦶</div><p>Nenhuma sessão este mês.</p></div></td></tr>`;
+    } else if (tipo === 'Pedicure') {
+      document.getElementById('pSessoes').textContent = filtrado.length;
+      document.getElementById('pFaturado').textContent = `R$ ${total.toFixed(2)}`;
+      document.getElementById('pTicket').textContent = `R$ ${ticket.toFixed(2)}`;
+      const tbody = document.getElementById('pedicTbody');
+      tbody.innerHTML = filtrado.length ? filtrado.map(a =>
+        `<tr><td>${a.clienteNome||'—'}</td><td>${formatDate(a.data)}</td><td>${a.km||0} km</td><td>R$ ${(a.valor||0).toFixed(2)}</td><td style="font-size:.8rem">${a.obs||'—'}</td></tr>`
+      ).join('') : `<tr><td colspan="5"><div class="empty"><div class="icon">🦶💅</div><p>Nenhuma sessão este mês.</p></div></td></tr>`;
     } else {
       document.getElementById('mSessoes').textContent = filtrado.length;
       document.getElementById('mFaturado').textContent = `R$ ${total.toFixed(2)}`;
@@ -1373,6 +1422,7 @@ function buildCharts(todos) {
   todos.forEach(a => {
     const s = a.servico?.includes('Reflex') && a.servico?.includes('Man') ? 'Man + Reflex'
              : a.servico?.includes('Reflex') ? 'Reflexologia'
+             : a.servico?.includes('Pedicure') ? 'Pedicure'
              : a.servico?.includes('Man') ? 'Manicure' : a.servico || 'Outro';
     servicoMap[s] = (servicoMap[s]||0) + (a.valor||0);
   });
@@ -1387,7 +1437,7 @@ function buildCharts(todos) {
       labels: sLabels,
       datasets: [{
         data: sData,
-        backgroundColor: ['#c97b8a','#7a9e8e','#e8d5c4','#5c3d3d'],
+        backgroundColor: ['#c97b8a','#7a9e8e','#e8d5c4','#5c3d3d','#b5a0d8'],
         borderWidth: 0,
       }]
     },
