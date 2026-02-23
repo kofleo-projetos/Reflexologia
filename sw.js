@@ -1,8 +1,8 @@
-const CACHE_NAME = 'adeline-v1';
+const CACHE_NAME = 'adeline-v3';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
+  '/Reflexologia/',
+  '/Reflexologia/index.html',
+  '/Reflexologia/manifest.json',
 ];
 
 self.addEventListener('install', event => {
@@ -22,11 +22,11 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Network first for Firebase requests
+  // Network first para Firebase
   if (event.request.url.includes('firestore') || event.request.url.includes('googleapis')) {
     return event.respondWith(fetch(event.request).catch(() => new Response('', { status: 503 })));
   }
-  // Cache first for app shell
+  // Cache first para o app shell
   event.respondWith(
     caches.match(event.request).then(cached => cached || fetch(event.request))
   );
