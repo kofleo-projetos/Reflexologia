@@ -151,11 +151,12 @@
       margin-bottom: 8px;
     }
     .card .card-value {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 2rem;
-      font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
       color: var(--mocha);
       line-height: 1;
+      letter-spacing: -.02em;
     }
     .card .card-sub {
       font-size: .72rem;
@@ -1840,6 +1841,7 @@ function buildCharts(todos) {
     },
     options: {
       responsive: true,
+      layout: { padding: { top: 28 } },
       plugins: {
         legend: { display: false },
         datalabels: false,
@@ -1855,16 +1857,15 @@ function buildCharts(todos) {
           const chart = anim.chart;
           const ctx = chart.ctx;
           ctx.save();
-          ctx.font = '600 11px DM Sans';
+          ctx.font = '700 11px DM Sans';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'bottom';
           chart.data.datasets[0].data.forEach((val, i) => {
             const meta = chart.getDatasetMeta(0);
             const bar = meta.data[i];
-            const x = bar.x;
-            const y = bar.y;
             ctx.fillStyle = val >= 0 ? '#3a7060' : '#c0392b';
-            ctx.fillText('R$' + val.toFixed(0), x, y - 4);
+            const label = val === 0 ? 'R$0' : (val > 0 ? '+R$' : '-R$') + Math.abs(val).toFixed(0);
+            ctx.fillText(label, bar.x, bar.y - 6);
           });
           ctx.restore();
         }
@@ -1899,8 +1900,35 @@ function buildCharts(todos) {
     options: {
       responsive: true,
       plugins: {
-        legend: { position: 'bottom', labels: { font: { family: 'DM Sans' } } },
-        tooltip: { callbacks: { label: ctx => ` R$ ${ctx.raw.toFixed(2)}` } }
+        legend: {
+          position: 'bottom',
+          labels: {
+            font: { family: 'DM Sans', size: 12 },
+            generateLabels(chart) {
+              const data = chart.data;
+              const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+              return data.labels.map((label, i) => {
+                const val = data.datasets[0].data[i];
+                const pct = total > 0 ? Math.round(val / total * 100) : 0;
+                return {
+                  text: `${label} — ${pct}%`,
+                  fillStyle: data.datasets[0].backgroundColor[i],
+                  strokeStyle: 'transparent',
+                  index: i,
+                };
+              });
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const pct = total > 0 ? Math.round(ctx.raw / total * 100) : 0;
+              return ` ${ctx.label}: ${pct}% (R$ ${ctx.raw.toFixed(2)})`;
+            }
+          }
+        }
       }
     }
   });
