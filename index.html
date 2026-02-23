@@ -1001,6 +1001,44 @@
   <button onclick="showSection('config')" data-sec="config"><span class="icon">⚙️</span>Config.</button>
 </div>
 
+<!-- MODAL EDITAR CLIENTE -->
+<div class="modal-overlay" id="modalEditCliente" onclick="if(event.target===this)fecharModalCliente()">
+  <div class="modal">
+    <h2>✏️ Editar Cliente</h2>
+    <input type="hidden" id="editClId" />
+    <div class="form-row">
+      <div>
+        <label>Nome *</label>
+        <input type="text" id="editClNome" placeholder="Nome completo" />
+      </div>
+      <div>
+        <label>Telefone</label>
+        <input type="tel" id="editClTel" placeholder="(11) 99999-9999" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Endereço / Bairro</label>
+        <input type="text" id="editClEndereco" placeholder="Rua, bairro ou cidade" />
+      </div>
+      <div>
+        <label>Distância Padrão (km)</label>
+        <input type="number" id="editClKm" placeholder="0" min="0" step="0.1" />
+      </div>
+    </div>
+    <div class="form-row single">
+      <div>
+        <label>Observações</label>
+        <textarea id="editClObs" placeholder="Preferências, alergias, horários..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModalCliente()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEdicaoCliente()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR AGENDAMENTO -->
 <div class="modal-overlay" id="modalEditAgenda" onclick="if(event.target===this)fecharModalAgenda()">
   <div class="modal">
@@ -1202,7 +1240,10 @@ function renderClientes() {
       <td>${c.endereco || '—'}</td>
       <td>${c.distanciaKm ? c.distanciaKm + ' km' : '—'}</td>
       <td style="font-size:.8rem;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.obs || '—'}</td>
-      <td><button class="action-btn" onclick="excluirCliente('${c.id}')">🗑️</button></td>
+      <td>
+        <button class="action-btn" onclick="abrirEditarCliente('${c.id}')" title="Editar">✏️</button>
+        <button class="action-btn" onclick="excluirCliente('${c.id}')" title="Excluir">🗑️</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -1228,6 +1269,40 @@ async function excluirCliente(id) {
   if (!confirm('Excluir este cliente?')) return;
   await db.collection(COL_CLIENTES).doc(id).delete();
   toast('🗑️ Cliente removido.');
+  loadClientes();
+}
+
+// ═══════════════════════════ MODAL EDITAR CLIENTE ═══════════════════════════
+function abrirEditarCliente(id) {
+  const c = allClientes.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('editClId').value       = id;
+  document.getElementById('editClNome').value     = c.nome || '';
+  document.getElementById('editClTel').value      = c.telefone || '';
+  document.getElementById('editClEndereco').value = c.endereco || '';
+  document.getElementById('editClKm').value       = c.distanciaKm || '';
+  document.getElementById('editClObs').value      = c.obs || '';
+  document.getElementById('modalEditCliente').classList.add('open');
+}
+
+function fecharModalCliente() {
+  document.getElementById('modalEditCliente').classList.remove('open');
+}
+
+async function salvarEdicaoCliente() {
+  const id   = document.getElementById('editClId').value;
+  const nome = document.getElementById('editClNome').value.trim();
+  if (!nome) { toast('⚠️ Nome é obrigatório!'); return; }
+  const data = {
+    nome,
+    telefone:    document.getElementById('editClTel').value.trim(),
+    endereco:    document.getElementById('editClEndereco').value.trim(),
+    distanciaKm: parseFloat(document.getElementById('editClKm').value) || 0,
+    obs:         document.getElementById('editClObs').value.trim(),
+  };
+  await db.collection(COL_CLIENTES).doc(id).update(data);
+  toast('✅ Cliente atualizado!');
+  fecharModalCliente();
   loadClientes();
 }
 
