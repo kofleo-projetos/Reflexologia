@@ -1214,12 +1214,17 @@ async function loadAgendaList() {
   list.innerHTML = `<div class="loading"><div class="spinner"></div> Carregando...</div>`;
   const today = new Date().toISOString().slice(0,10);
   try {
-    const snap = await db.collection(COL_AGENDA).where('data','>=',today).orderBy('data').orderBy('hora').limit(50).get();
+    const snap = await db.collection(COL_AGENDA).where('data','>=',today).orderBy('data').limit(50).get();
     if (snap.empty) {
       list.innerHTML = `<div class="empty"><div class="icon">📅</div><p>Nenhum agendamento futuro.</p></div>`;
       return;
     }
-    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Ordena por data e depois por hora localmente (evita índice composto no Firestore)
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => {
+        if (a.data !== b.data) return a.data.localeCompare(b.data);
+        return (a.hora||'').localeCompare(b.hora||'');
+      });
     list.innerHTML = docs.map(a => {
       const [y,m,d2] = (a.data||'').split('-');
       const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -1341,9 +1346,14 @@ async function loadNextAppt() {
   const area = document.getElementById('nextApptArea');
   const today = new Date().toISOString().slice(0,10);
   try {
-    const snap = await db.collection(COL_AGENDA).where('data','>=',today).orderBy('data').orderBy('hora').limit(1).get();
+    const snap = await db.collection(COL_AGENDA).where('data','>=',today).orderBy('data').limit(10).get();
     if (snap.empty) { area.innerHTML = ''; return; }
-    const a = snap.docs[0].data();
+    // Pega o mais próximo ordenando por data e hora localmente
+    const docs = snap.docs.map(d => d.data()).sort((a,b) => {
+      if (a.data !== b.data) return a.data.localeCompare(b.data);
+      return (a.hora||'').localeCompare(b.hora||'');
+    });
+    const a = docs[0];
     const [y,m,d] = (a.data||'').split('-');
     const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     area.innerHTML = `
