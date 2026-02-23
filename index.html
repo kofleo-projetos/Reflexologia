@@ -941,11 +941,13 @@ function showSection(id) {
 }
 
 // ═══════════════════════════ TOAST ═══════════════════════════
+let _toastTimer;
 function toast(msg, duration = 2500) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), duration);
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), duration);
 }
 
 // ═══════════════════════════ CONFIG ═══════════════════════════
